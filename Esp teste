@@ -1,0 +1,332 @@
+--[[
+    Script Profissional de ESP - by Joao
+    Interface moderna com funcionalidades completas de highlight
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Variáveis globais
+local espEnabled = false
+local espObjects = {}
+local playerHighlights = {}
+
+-- Criando a interface gráfica principal
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "JoaoESP"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Frame principal com efeito de vidro moderno
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 280, 0, 140)
+mainFrame.Position = UDim2.new(0, 20, 0, 20)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+mainFrame.BackgroundTransparency = 0.15
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+-- Sombra e bordas arredondadas
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = mainFrame
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(255, 255, 255)
+stroke.Transparency = 0.85
+stroke.Thickness = 1
+stroke.Parent = mainFrame
+
+-- Efeito de brilho
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 200, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
+})
+gradient.Rotation = 45
+gradient.Transparency = NumberSequence.new(0.95)
+gradient.Parent = mainFrame
+
+-- Título "by Joao" no canto superior direito
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "Title"
+titleLabel.Size = UDim2.new(1, -20, 0, 30)
+titleLabel.Position = UDim2.new(0, 10, 0, 5)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "by Joao"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextTransparency = 0.2
+titleLabel.TextSize = 18
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Right
+titleLabel.TextYAlignment = Enum.TextYAlignment.Top
+titleLabel.Parent = mainFrame
+
+-- Subtítulo decorativo
+local subtitleLabel = Instance.new("TextLabel")
+subtitleLabel.Size = UDim2.new(1, -20, 0, 20)
+subtitleLabel.Position = UDim2.new(0, 10, 0, 28)
+subtitleLabel.BackgroundTransparency = 1
+subtitleLabel.Text = "Professional ESP System"
+subtitleLabel.TextColor3 = Color3.fromRGB(180, 180, 255)
+subtitleLabel.TextSize = 12
+subtitleLabel.Font = Enum.Font.Gotham
+subtitleLabel.TextXAlignment = Enum.TextXAlignment.Right
+subtitleLabel.TextYAlignment = Enum.TextYAlignment.Top
+subtitleLabel.Parent = mainFrame
+
+-- Container para o toggle
+local toggleContainer = Instance.new("Frame")
+toggleContainer.Name = "ToggleContainer"
+toggleContainer.Size = UDim2.new(1, -20, 0, 50)
+toggleContainer.Position = UDim2.new(0, 10, 0, 60)
+toggleContainer.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+toggleContainer.BackgroundTransparency = 0.3
+toggleContainer.BorderSizePixel = 0
+toggleContainer.Parent = mainFrame
+
+local containerCorner = Instance.new("UICorner")
+containerCorner.CornerRadius = UDim.new(0, 8)
+containerCorner.Parent = toggleContainer
+
+-- Texto do toggle
+local toggleText = Instance.new("TextLabel")
+toggleText.Name = "ToggleText"
+toggleText.Size = UDim2.new(0.6, -10, 1, 0)
+toggleText.Position = UDim2.new(0, 10, 0, 0)
+toggleText.BackgroundTransparency = 1
+toggleText.Text = "ESP System"
+toggleText.TextColor3 = Color3.fromRGB(220, 220, 255)
+toggleText.TextSize = 16
+toggleText.Font = Enum.Font.GothamSemibold
+toggleText.TextXAlignment = Enum.TextXAlignment.Left
+toggleText.Parent = toggleContainer
+
+-- Botão toggle moderno
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 70, 0, 30)
+toggleButton.Position = UDim2.new(1, -80, 0.5, -15)
+toggleButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+toggleButton.Text = "OFF"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.TextSize = 14
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.Parent = toggleContainer
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 15)
+buttonCorner.Parent = toggleButton
+
+-- Efeito de hover no botão
+toggleButton.MouseEnter:Connect(function()
+    TweenService:Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = espEnabled and Color3.fromRGB(40, 180, 80) or Color3.fromRGB(220, 70, 70)}):Play()
+end)
+
+toggleButton.MouseLeave:Connect(function()
+    TweenService:Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = espEnabled and Color3.fromRGB(50, 200, 100) or Color3.fromRGB(200, 60, 60)}):Play()
+end)
+
+-- Status indicator
+local statusIndicator = Instance.new("Frame")
+statusIndicator.Name = "StatusIndicator"
+statusIndicator.Size = UDim2.new(0, 8, 0, 8)
+statusIndicator.Position = UDim2.new(0, 20, 1, -15)
+statusIndicator.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+statusIndicator.BorderSizePixel = 0
+statusIndicator.Parent = mainFrame
+
+local indicatorCorner = Instance.new("UICorner")
+indicatorCorner.CornerRadius = UDim.new(1, 0)
+indicatorCorner.Parent = statusIndicator
+
+-- Função para criar ESP para um jogador
+local function createESPForPlayer(player)
+    if player == LocalPlayer then return end
+    
+    -- Criar Highlight
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "JoaoESP_Highlight"
+    highlight.Adornee = player.Character or player.CharacterAdded:Wait()
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillColor = Color3.fromRGB(0, 100, 255) -- Azul padrão
+    highlight.FillTransparency = 0.5
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.OutlineTransparency = 0.7
+    highlight.Parent = player.Character
+    
+    -- Criar BillboardGui com texto
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "JoaoESP_Text"
+    billboard.Adornee = player.Character:FindFirstChild("Head") or player.Character:WaitForChild("Head")
+    billboard.Size = UDim2.new(0, 100, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "PLAYER"
+    textLabel.TextColor3 = Color3.fromRGB(0, 150, 255)
+    textLabel.TextSize = 18
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextStrokeTransparency = 0.3
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.Parent = billboard
+    
+    billboard.Parent = player.Character
+    
+    -- Armazenar objetos para referência futura
+    if not espObjects[player] then
+        espObjects[player] = {}
+    end
+    espObjects[player].highlight = highlight
+    espObjects[player].billboard = billboard
+    
+    -- Verificar se é o monstro (exemplo: baseado no nome)
+    -- Você pode ajustar esta lógica conforme necessário
+    if player.Name:lower():find("monstro") or player.DisplayName:lower():find("monstro") then
+        highlight.FillColor = Color3.fromRGB(255, 0, 0)
+        textLabel.Text = "MONSTRO"
+        textLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+    end
+    
+    -- Atualizar quando o personagem mudar
+    player.CharacterAdded:Connect(function(character)
+        wait(1) -- Aguardar o personagem carregar
+        if espEnabled and espObjects[player] then
+            highlight.Adornee = character
+            billboard.Adornee = character:FindFirstChild("Head") or character:WaitForChild("Head")
+        end
+    end)
+end
+
+-- Função para remover ESP de um jogador
+local function removeESPForPlayer(player)
+    if espObjects[player] then
+        if espObjects[player].highlight then
+            espObjects[player].highlight:Destroy()
+        end
+        if espObjects[player].billboard then
+            espObjects[player].billboard:Destroy()
+        end
+        espObjects[player] = nil
+    end
+end
+
+-- Função para ativar/desativar ESP para todos os jogadores
+local function toggleESP(state)
+    espEnabled = state
+    
+    -- Atualizar interface
+    toggleButton.Text = state and "ON" or "OFF"
+    toggleButton.BackgroundColor3 = state and Color3.fromRGB(50, 200, 100) or Color3.fromRGB(200, 60, 60)
+    statusIndicator.BackgroundColor3 = state and Color3.fromRGB(50, 200, 100) or Color3.fromRGB(200, 60, 60)
+    
+    -- Animar o frame principal
+    TweenService:Create(mainFrame, TweenInfo.new(0.3), {
+        BackgroundColor3 = state and Color3.fromRGB(30, 30, 45) or Color3.fromRGB(25, 25, 35)
+    }):Play()
+    
+    if state then
+        -- Criar ESP para todos os jogadores existentes
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                createESPForPlayer(player)
+            end
+        end
+    else
+        -- Remover ESP de todos os jogadores
+        for player, _ in pairs(espObjects) do
+            removeESPForPlayer(player)
+        end
+    end
+end
+
+-- Conectar o botão toggle
+toggleButton.MouseButton1Click:Connect(function()
+    toggleESP(not espEnabled)
+end)
+
+-- Detectar quando novos jogadores entram
+Players.PlayerAdded:Connect(function(player)
+    if espEnabled then
+        player.CharacterAdded:Connect(function()
+            wait(1)
+            createESPForPlayer(player)
+        end)
+        
+        if player.Character then
+            createESPForPlayer(player)
+        end
+    end
+end)
+
+-- Limpar quando jogadores saem
+Players.PlayerRemoving:Connect(function(player)
+    removeESPForPlayer(player)
+end)
+
+-- Criar ESP para jogadores existentes (se ativado)
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer and espEnabled then
+        createESPForPlayer(player)
+    end
+end
+
+-- Tornar a UI arrastável
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+local function updateDrag(input)
+    local delta = input.Position - dragStart
+    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+mainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        updateDrag(input)
+    end
+end)
+
+-- Efeito de pulsação suave para o status indicator
+spawn(function()
+    while true do
+        if espEnabled then
+            TweenService:Create(statusIndicator, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+                BackgroundTransparency = 0.3
+            }):Play()
+        end
+        wait(2)
+    end
+end)
+
+print("✅ Joao ESP System carregado com sucesso!")
