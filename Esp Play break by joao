@@ -1,0 +1,375 @@
+-- Criar ScreenGui
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Criar a interface principal
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ModernUI"
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+-- Frame principal
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 280, 0, 380)
+mainFrame.Position = UDim2.new(0.5, -140, 0.5, -190)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+mainFrame.BackgroundTransparency = 0.15
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+-- Bordas arredondadas
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 16)
+corner.Parent = mainFrame
+
+-- Sombra
+local shadow = Instance.new("UIShadow")
+shadow.Parent = mainFrame
+
+-- Título (agora serve como área para arrastar)
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 50)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "ESP SYSTEM"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 22
+title.Font = Enum.Font.GothamBold
+title.Parent = mainFrame
+
+-- Linha decorativa
+local line = Instance.new("Frame")
+line.Size = UDim2.new(0.7, 0, 0, 2)
+line.Position = UDim2.new(0.15, 0, 0, 42)
+line.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+line.BorderSizePixel = 0
+line.Parent = mainFrame
+
+-- Crédito "by Joao"
+local credit = Instance.new("TextLabel")
+credit.Size = UDim2.new(1, 0, 0, 30)
+credit.Position = UDim2.new(0, 0, 1, -35)
+credit.BackgroundTransparency = 1
+credit.Text = "by Joao"
+credit.TextColor3 = Color3.fromRGB(150, 150, 170)
+credit.TextSize = 12
+credit.Font = Enum.Font.Gotham
+credit.TextXAlignment = Enum.TextXAlignment.Center
+credit.Parent = mainFrame
+
+-- Variáveis para o sistema de arrastar
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+-- Função para tornar a GUI arrastável
+local function makeDraggable(frame, dragArea)
+    dragArea = dragArea or frame
+    
+    dragArea.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- Aplicar sistema de arrastar no título
+makeDraggable(mainFrame, title)
+
+-- Variáveis de estado
+local states = {
+    esp = false,
+    monster = false
+}
+
+local activeESP = {} -- Armazena highlights dos players
+local currentMonster = nil
+
+-- Função para criar botão estilizado
+local function createButton(name, text, yPos, color, activeColor)
+    local button = Instance.new("TextButton")
+    button.Name = name
+    button.Size = UDim2.new(0.8, 0, 0, 45)
+    button.Position = UDim2.new(0.1, 0, 0, yPos)
+    button.BackgroundColor3 = color
+    button.Text = text
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextSize = 15
+    button.Font = Enum.Font.GothamSemibold
+    button.BorderSizePixel = 0
+    button.Parent = mainFrame
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 8)
+    btnCorner.Parent = button
+    
+    local btnStroke = Instance.new("UIStroke")
+    btnStroke.Thickness = 0
+    btnStroke.Parent = button
+    
+    -- Efeito hover
+    button.MouseEnter:Connect(function()
+        button.BackgroundColor3 = Color3.fromRGB(color.R + 20, color.G + 20, color.B + 20)
+    end)
+    
+    button.MouseLeave:Connect(function()
+        local currentColor = states[name:lower():gsub("button", "")] == true and activeColor or color
+        button.BackgroundColor3 = currentColor
+    end)
+    
+    return button
+end
+
+-- Função para criar highlight
+local function addHighlight(character, color)
+    if not character then return nil end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = color
+    highlight.OutlineColor = color
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0.3
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = character
+    
+    return highlight
+end
+
+-- Função para criar texto flutuante
+local function addNameTag(character, text, color)
+    if not character then return nil end
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Size = UDim2.new(0, 120, 0, 30)
+    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = character
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = text
+    textLabel.TextColor3 = color
+    textLabel.TextSize = 14
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextStrokeTransparency = 0.2
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.Parent = billboard
+    
+    return billboard
+end
+
+-- Função para limpar ESP de um player
+local function clearESP(player)
+    if activeESP[player] then
+        if activeESP[player].highlight then
+            activeESP[player].highlight:Destroy()
+        end
+        if activeESP[player].nametag then
+            activeESP[player].nametag:Destroy()
+        end
+        activeESP[player] = nil
+    end
+end
+
+-- Função para atualizar ESP de todos os players
+local function updateESP()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local character = player.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                
+                if states.esp then
+                    if not activeESP[player] then
+                        local highlight = addHighlight(character, Color3.fromRGB(0, 120, 255))
+                        local nametag = addNameTag(character, "PLAYER", Color3.fromRGB(0, 150, 255))
+                        activeESP[player] = {
+                            highlight = highlight,
+                            nametag = nametag
+                        }
+                    end
+                else
+                    clearESP(player)
+                end
+                
+            end
+        end
+    end
+end
+
+-- Função para atualizar modo monster
+local function updateMonster()
+    if states.monster then
+        -- Pega o primeiro player não-local como monster
+        local monsterPlayer = nil
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                monsterPlayer = player
+                break
+            end
+        end
+        
+        if monsterPlayer and monsterPlayer.Character then
+            if currentMonster ~= monsterPlayer then
+                -- Limpa monster anterior
+                if currentMonster and currentMonster.highlight then
+                    currentMonster.highlight:Destroy()
+                end
+                if currentMonster and currentMonster.nametag then
+                    currentMonster.nametag:Destroy()
+                end
+                
+                -- Cria novo monster
+                local highlight = addHighlight(monsterPlayer.Character, Color3.fromRGB(255, 50, 50))
+                local nametag = addNameTag(monsterPlayer.Character, "MONSTER", Color3.fromRGB(255, 80, 80))
+                currentMonster = {
+                    player = monsterPlayer,
+                    highlight = highlight,
+                    nametag = nametag
+                }
+            end
+        end
+    else
+        -- Remove monster
+        if currentMonster then
+            if currentMonster.highlight then
+                currentMonster.highlight:Destroy()
+            end
+            if currentMonster.nametag then
+                currentMonster.nametag:Destroy()
+            end
+            currentMonster = nil
+        end
+    end
+end
+
+-- Criar botões
+local espBtn = createButton("ESPButton", "ESP PLAYERS", 80, Color3.fromRGB(0, 80, 160), Color3.fromRGB(0, 120, 255))
+local monsterBtn = createButton("MonsterButton", "MONSTER MODE", 145, Color3.fromRGB(160, 40, 40), Color3.fromRGB(255, 60, 60))
+
+-- Eventos dos botões
+espBtn.MouseButton1Click:Connect(function()
+    states.esp = not states.esp
+    
+    if states.esp then
+        espBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+        updateESP()
+    else
+        espBtn.BackgroundColor3 = Color3.fromRGB(0, 80, 160)
+        -- Limpa todos os ESPs
+        for player, _ in pairs(activeESP) do
+            clearESP(player)
+        end
+        activeESP = {}
+    end
+end)
+
+monsterBtn.MouseButton1Click:Connect(function()
+    states.monster = not states.monster
+    
+    if states.monster then
+        monsterBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+        updateMonster()
+    else
+        monsterBtn.BackgroundColor3 = Color3.fromRGB(160, 40, 40)
+        if currentMonster then
+            if currentMonster.highlight then
+                currentMonster.highlight:Destroy()
+            end
+            if currentMonster.nametag then
+                currentMonster.nametag:Destroy()
+            end
+            currentMonster = nil
+        end
+    end
+end)
+
+-- Eventos de players
+local function onCharacterAdded(player, character)
+    wait(0.5)
+    if states.esp then
+        updateESP()
+    end
+    if states.monster then
+        updateMonster()
+    end
+end
+
+local function onPlayerAdded(player)
+    if player.Character then
+        onCharacterAdded(player, player.Character)
+    end
+    player.CharacterAdded:Connect(function(character)
+        onCharacterAdded(player, character)
+    end)
+end
+
+local function onPlayerRemoving(player)
+    clearESP(player)
+    if currentMonster and currentMonster.player == player then
+        if currentMonster.highlight then
+            currentMonster.highlight:Destroy()
+        end
+        if currentMonster.nametag then
+            currentMonster.nametag:Destroy()
+        end
+        currentMonster = nil
+    end
+end
+
+-- Conectar eventos
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        onPlayerAdded(player)
+    end
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+Players.PlayerRemoving:Connect(onPlayerRemoving)
+
+-- Loop de atualização
+RunService.Heartbeat:Connect(function()
+    if states.esp then
+        updateESP()
+    end
+    if states.monster then
+        updateMonster()
+    end
+end)
+
+-- Animação de entrada
+mainFrame.BackgroundTransparency = 1
+mainFrame:TweenSizeAndPosition(
+    UDim2.new(0, 280, 0, 380),
+    UDim2.new(0.5, -140, 0.5, -190),
+    Enum.EasingDirection.Out,
+    Enum.EasingStyle.Back,
+    0.4,
+    true,
+    function()
+        mainFrame.BackgroundTransparency = 0.15
+    end
+)
+
+-- Inicialização
+wait(1)
+updateESP()
+updateMonster()
