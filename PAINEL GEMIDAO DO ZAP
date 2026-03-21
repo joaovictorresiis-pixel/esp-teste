@@ -1,0 +1,442 @@
+-- Criar ScreenGui
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Criar a GUI principal
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ModernUI"
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- ========== SPLASH SCREEN (TELA DE CARREGAMENTO) ==========
+local splashFrame = Instance.new("Frame")
+splashFrame.Name = "SplashFrame"
+splashFrame.Size = UDim2.new(1, 0, 1, 0)
+splashFrame.Position = UDim2.new(0, 0, 0, 0)
+splashFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+splashFrame.BackgroundTransparency = 0
+splashFrame.BorderSizePixel = 0
+splashFrame.Parent = screenGui
+
+-- Texto principal "ESP TEST"
+local splashTitle = Instance.new("TextLabel")
+splashTitle.Size = UDim2.new(0, 300, 0, 80)
+splashTitle.Position = UDim2.new(0.5, -150, 0.5, -100)
+splashTitle.BackgroundTransparency = 1
+splashTitle.Text = "ESP TEST"
+splashTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+splashTitle.TextSize = 48
+splashTitle.Font = Enum.Font.GothamBold
+splashTitle.TextScaled = true
+splashTitle.Parent = splashFrame
+
+-- Texto "by Joao" na splash
+local splashCredit = Instance.new("TextLabel")
+splashCredit.Size = UDim2.new(0, 200, 0, 30)
+splashCredit.Position = UDim2.new(0.5, -100, 0.5, 40)
+splashCredit.BackgroundTransparency = 1
+splashCredit.Text = "by Joao"
+splashCredit.TextColor3 = Color3.fromRGB(150, 150, 170)
+splashCredit.TextSize = 18
+splashCredit.Font = Enum.Font.Gotham
+splashCredit.Parent = splashFrame
+
+-- Animação de pulsar no título
+local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+local pulseTween = TweenService:Create(splashTitle, tweenInfo, {TextColor3 = Color3.fromRGB(100, 150, 255)})
+pulseTween:Play()
+
+-- ========== GUI PRINCIPAL ==========
+-- Frame principal
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 280, 0, 420)
+mainFrame.Position = UDim2.new(0.5, -140, 0.5, -210)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+mainFrame.BackgroundTransparency = 0.15
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
+
+-- Bordas arredondadas
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 16)
+corner.Parent = mainFrame
+
+-- Sombra
+local shadow = Instance.new("UIShadow")
+shadow.Parent = mainFrame
+
+-- Título
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 50)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "ESP SYSTEM"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 22
+title.Font = Enum.Font.GothamBold
+title.Parent = mainFrame
+
+-- Linha decorativa
+local line = Instance.new("Frame")
+line.Size = UDim2.new(0.7, 0, 0, 2)
+line.Position = UDim2.new(0.15, 0, 0, 42)
+line.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+line.BorderSizePixel = 0
+line.Parent = mainFrame
+
+-- Crédito "by Joao" na GUI principal
+local credit = Instance.new("TextLabel")
+credit.Size = UDim2.new(1, 0, 0, 30)
+credit.Position = UDim2.new(0, 0, 1, -35)
+credit.BackgroundTransparency = 1
+credit.Text = "by Joao"
+credit.TextColor3 = Color3.fromRGB(150, 150, 170)
+credit.TextSize = 12
+credit.Font = Enum.Font.Gotham
+credit.TextXAlignment = Enum.TextXAlignment.Center
+credit.Parent = mainFrame
+
+-- Variáveis para o sistema de arrastar
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+-- Função para tornar a GUI arrastável
+local function makeDraggable(frame, dragArea)
+    dragArea = dragArea or frame
+    
+    dragArea.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+makeDraggable(mainFrame, title)
+
+-- Sistema de equipes
+local teams = {
+    MONSTER = "Monster",
+    PLAYER = "Player"
+}
+
+local playerTeam = {}
+local activeHighlights = {}
+
+-- Função para distribuir equipes aleatoriamente
+local function assignTeams()
+    local allPlayers = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(allPlayers, player)
+        end
+    end
+    
+    for i = #allPlayers, 2, -1 do
+        local j = math.random(i)
+        allPlayers[i], allPlayers[j] = allPlayers[j], allPlayers[i]
+    end
+    
+    local monsterCount = math.max(1, math.floor(#allPlayers * 0.2))
+    
+    for i, player in ipairs(allPlayers) do
+        if i <= monsterCount then
+            playerTeam[player] = teams.MONSTER
+        else
+            playerTeam[player] = teams.PLAYER
+        end
+    end
+end
+
+-- Função para criar highlight
+local function createHighlight(character, color)
+    if not character then return nil end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = color
+    highlight.OutlineColor = color
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0.3
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = character
+    
+    return highlight
+end
+
+-- Função para criar texto flutuante (corrigida para ficar no tronco)
+local function createBillboard(character, text, color)
+    if not character then return nil end
+    
+    -- Procura o torso ou humanoidrootpart para anexar o billboard
+    local attachPoint = character:FindFirstChild("UpperTorso") or 
+                        character:FindFirstChild("Torso") or 
+                        character:FindFirstChild("HumanoidRootPart")
+    
+    if not attachPoint then return nil end
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Size = UDim2.new(0, 140, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 0.5, 0) -- Centralizado no tronco
+    billboard.AlwaysOnTop = true
+    billboard.Parent = attachPoint
+    
+    -- Fundo semi-transparente para melhor visibilidade
+    local background = Instance.new("Frame")
+    background.Size = UDim2.new(1, 0, 1, 0)
+    background.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    background.BackgroundTransparency = 0.3
+    background.BorderSizePixel = 0
+    background.Parent = billboard
+    
+    local bgCorner = Instance.new("UICorner")
+    bgCorner.CornerRadius = UDim.new(0, 8)
+    bgCorner.Parent = background
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = text
+    textLabel.TextColor3 = color
+    textLabel.TextSize = 16
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextStrokeTransparency = 0.2
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.Parent = billboard
+    
+    return billboard
+end
+
+-- Função para remover highlight
+local function removeHighlight(player)
+    if activeHighlights[player] then
+        if activeHighlights[player].highlight then
+            activeHighlights[player].highlight:Destroy()
+        end
+        if activeHighlights[player].billboard then
+            activeHighlights[player].billboard:Destroy()
+        end
+        activeHighlights[player] = nil
+    end
+end
+
+-- Função para atualizar todos os highlights
+local function updateAllHighlights()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local character = player.Character
+            if character and (character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")) then
+                local team = playerTeam[player]
+                
+                if team == teams.MONSTER then
+                    if not activeHighlights[player] or activeHighlights[player].type ~= "monster" then
+                        removeHighlight(player)
+                        local highlight = createHighlight(character, Color3.fromRGB(255, 50, 50))
+                        local billboard = createBillboard(character, "MONSTER", Color3.fromRGB(255, 80, 80))
+                        activeHighlights[player] = {
+                            type = "monster",
+                            highlight = highlight,
+                            billboard = billboard
+                        }
+                    end
+                elseif team == teams.PLAYER then
+                    if not activeHighlights[player] or activeHighlights[player].type ~= "player" then
+                        removeHighlight(player)
+                        local highlight = createHighlight(character, Color3.fromRGB(0, 120, 255))
+                        local billboard = createBillboard(character, "PLAYER", Color3.fromRGB(0, 150, 255))
+                        activeHighlights[player] = {
+                            type = "player",
+                            highlight = highlight,
+                            billboard = billboard
+                        }
+                    end
+                end
+            else
+                removeHighlight(player)
+            end
+        end
+    end
+end
+
+-- Função para limpar todos os highlights
+local function clearAllHighlights()
+    for player, _ in pairs(activeHighlights) do
+        removeHighlight(player)
+    end
+    activeHighlights = {}
+end
+
+-- Função para criar botão estilizado
+local function createButton(name, text, yPos, color, activeColor)
+    local button = Instance.new("TextButton")
+    button.Name = name
+    button.Size = UDim2.new(0.8, 0, 0, 45)
+    button.Position = UDim2.new(0.1, 0, 0, yPos)
+    button.BackgroundColor3 = color
+    button.Text = text
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextSize = 15
+    button.Font = Enum.Font.GothamSemibold
+    button.BorderSizePixel = 0
+    button.Parent = mainFrame
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 8)
+    btnCorner.Parent = button
+    
+    button.MouseEnter:Connect(function()
+        button.BackgroundColor3 = Color3.fromRGB(color.R + 20, color.G + 20, color.B + 20)
+    end)
+    
+    button.MouseLeave:Connect(function()
+        button.BackgroundColor3 = color
+    end)
+    
+    return button
+end
+
+-- Criar botões
+local espButton = createButton("ESPButton", "ATIVAR ESP", 80, Color3.fromRGB(0, 80, 160), Color3.fromRGB(0, 120, 255))
+local randomizeButton = createButton("RandomizeButton", "RANDOMIZAR EQUIPES", 145, Color3.fromRGB(80, 80, 160), Color3.fromRGB(100, 100, 200))
+
+-- Variável de controle do ESP
+local espActive = false
+
+-- Evento do botão ESP
+espButton.MouseButton1Click:Connect(function()
+    espActive = not espActive
+    
+    if espActive then
+        espButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+        espButton.Text = "DESATIVAR ESP"
+        
+        if next(playerTeam) == nil then
+            assignTeams()
+        end
+        
+        updateAllHighlights()
+    else
+        espButton.BackgroundColor3 = Color3.fromRGB(0, 80, 160)
+        espButton.Text = "ATIVAR ESP"
+        clearAllHighlights()
+    end
+end)
+
+-- Evento do botão Randomizar Equipes
+randomizeButton.MouseButton1Click:Connect(function()
+    assignTeams()
+    
+    if espActive then
+        updateAllHighlights()
+    end
+    
+    randomizeButton.BackgroundColor3 = Color3.fromRGB(100, 100, 200)
+    wait(0.2)
+    randomizeButton.BackgroundColor3 = Color3.fromRGB(80, 80, 160)
+end)
+
+-- Eventos de players
+local function onCharacterAdded(player, character)
+    wait(0.5)
+    if espActive then
+        updateAllHighlights()
+    end
+end
+
+local function onPlayerAdded(player)
+    if player ~= LocalPlayer then
+        if next(playerTeam) == nil then
+            assignTeams()
+        else
+            playerTeam[player] = teams.PLAYER
+        end
+        
+        if player.Character then
+            onCharacterAdded(player, player.Character)
+        end
+        player.CharacterAdded:Connect(function(character)
+            onCharacterAdded(player, character)
+        end)
+    end
+end
+
+local function onPlayerRemoving(player)
+    removeHighlight(player)
+    playerTeam[player] = nil
+end
+
+-- Conectar eventos
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        onPlayerAdded(player)
+    end
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+Players.PlayerRemoving:Connect(onPlayerRemoving)
+
+-- Loop de atualização
+RunService.Heartbeat:Connect(function()
+    if espActive then
+        updateAllHighlights()
+    end
+end)
+
+-- ========== TRANSIÇÃO DA SPLASH PARA A GUI PRINCIPAL ==========
+wait(2) -- Mostra a splash por 2 segundos
+
+-- Para a animação de pulsar
+pulseTween:Cancel()
+
+-- Animação de fade out da splash
+local fadeOutTween = TweenService:Create(splashFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
+    BackgroundTransparency = 1
+})
+
+local titleFadeOut = TweenService:Create(splashTitle, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
+    TextTransparency = 1
+})
+
+local creditFadeOut = TweenService:Create(splashCredit, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
+    TextTransparency = 1
+})
+
+-- Quando o fade terminar, mostra a GUI principal
+fadeOutTween:Play()
+titleFadeOut:Play()
+creditFadeOut:Play()
+
+fadeOutTween.Completed:Connect(function()
+    splashFrame:Destroy()
+    mainFrame.Visible = true
+    
+    -- Animação de entrada da GUI principal
+    mainFrame.BackgroundTransparency = 1
+    local appearTween = TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 0.15
+    })
+    appearTween:Play()
+end)
+
+-- Inicialização
+assignTeams()
