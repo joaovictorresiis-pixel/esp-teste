@@ -1,0 +1,383 @@
+-- LocalScript (coloque dentro de um ScreenGui em StarterGui)
+
+-- Aguardar o jogador carregar completamente
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Criar ScreenGui se não existir
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "UtilityGUI"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
+
+-- Variáveis
+local savedPosition = nil
+local originalPosition = nil
+local isTeleporting = false
+local noclipEnabled = false
+local noclipConnection = nil
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Função para criar a GUI
+local function createGUI()
+    -- Frame principal (móvel)
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 250, 0, 250)
+    mainFrame.Position = UDim2.new(0.5, -125, 0.5, -125)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    mainFrame.BackgroundTransparency = 0.15
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = screenGui
+    
+    -- Sombra/efeito visual
+    local uiShadow = Instance.new("UICorner")
+    uiShadow.CornerRadius = UDim.new(0, 12)
+    uiShadow.Parent = mainFrame
+    
+    -- Título
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1, 0, 0, 35)
+    titleBar.Position = UDim2.new(0, 0, 0, 0)
+    titleBar.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    titleBar.BackgroundTransparency = 0.2
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = mainFrame
+    
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 12)
+    titleCorner.Parent = titleBar
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 1, 0)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "⚡ UTILITY MENU ⚡"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextScaled = true
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 18
+    title.Parent = titleBar
+    
+    -- Botão Salvar Posição
+    local saveButton = Instance.new("TextButton")
+    saveButton.Size = UDim2.new(0.85, 0, 0, 40)
+    saveButton.Position = UDim2.new(0.075, 0, 0, 50)
+    saveButton.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+    saveButton.Text = "📌 SALVAR POSIÇÃO"
+    saveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    saveButton.TextScaled = true
+    saveButton.Font = Enum.Font.GothamSemibold
+    saveButton.BorderSizePixel = 0
+    saveButton.Parent = mainFrame
+    
+    local saveCorner = Instance.new("UICorner")
+    saveCorner.CornerRadius = UDim.new(0, 8)
+    saveCorner.Parent = saveButton
+    
+    -- Botão Teleportar (Ida e Volta)
+    local teleportRoundTripButton = Instance.new("TextButton")
+    teleportRoundTripButton.Size = UDim2.new(0.85, 0, 0, 40)
+    teleportRoundTripButton.Position = UDim2.new(0.075, 0, 0, 100)
+    teleportRoundTripButton.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+    teleportRoundTripButton.Text = "🌀 IDA E VOLTA"
+    teleportRoundTripButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    teleportRoundTripButton.TextScaled = true
+    teleportRoundTripButton.Font = Enum.Font.GothamSemibold
+    teleportRoundTripButton.BorderSizePixel = 0
+    teleportRoundTripButton.Parent = mainFrame
+    
+    local teleportRoundTripCorner = Instance.new("UICorner")
+    teleportRoundTripCorner.CornerRadius = UDim.new(0, 8)
+    teleportRoundTripCorner.Parent = teleportRoundTripButton
+    
+    -- Botão Teleportar (Permanente)
+    local teleportPermanentButton = Instance.new("TextButton")
+    teleportPermanentButton.Size = UDim2.new(0.85, 0, 0, 40)
+    teleportPermanentButton.Position = UDim2.new(0.075, 0, 0, 150)
+    teleportPermanentButton.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+    teleportPermanentButton.Text = "✨ TELEPORTAR (PERMANENTE)"
+    teleportPermanentButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    teleportPermanentButton.TextScaled = true
+    teleportPermanentButton.Font = Enum.Font.GothamSemibold
+    teleportPermanentButton.BorderSizePixel = 0
+    teleportPermanentButton.Parent = mainFrame
+    
+    local teleportPermanentCorner = Instance.new("UICorner")
+    teleportPermanentCorner.CornerRadius = UDim.new(0, 8)
+    teleportPermanentCorner.Parent = teleportPermanentButton
+    
+    -- Botão Noclip
+    local noclipButton = Instance.new("TextButton")
+    noclipButton.Size = UDim2.new(0.85, 0, 0, 40)
+    noclipButton.Position = UDim2.new(0.075, 0, 0, 200)
+    noclipButton.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+    noclipButton.Text = "🔓 NOCLIP (DESATIVADO)"
+    noclipButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    noclipButton.TextScaled = true
+    noclipButton.Font = Enum.Font.GothamSemibold
+    noclipButton.BorderSizePixel = 0
+    noclipButton.Parent = mainFrame
+    
+    local noclipCorner = Instance.new("UICorner")
+    noclipCorner.CornerRadius = UDim.new(0, 8)
+    noclipCorner.Parent = noclipButton
+    
+    -- Função para atualizar o texto do botão noclip
+    local function updateNoclipButton()
+        if noclipEnabled then
+            noclipButton.Text = "🔒 NOCLIP (ATIVADO)"
+            noclipButton.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+        else
+            noclipButton.Text = "🔓 NOCLIP (DESATIVADO)"
+            noclipButton.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+        end
+    end
+    
+    -- Função para salvar posição
+    saveButton.MouseButton1Click:Connect(function()
+        local currentCharacter = player.Character
+        if currentCharacter and currentCharacter:FindFirstChild("HumanoidRootPart") then
+            savedPosition = currentCharacter.HumanoidRootPart.Position
+            -- Feedback visual
+            local originalColor = saveButton.BackgroundColor3
+            saveButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            wait(0.2)
+            saveButton.BackgroundColor3 = originalColor
+            
+            -- Notificação
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "✅ Posição Salva",
+                Text = string.format("Posição salva: (%.1f, %.1f, %.1f)", savedPosition.X, savedPosition.Y, savedPosition.Z),
+                Duration = 3
+            })
+        else
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "❌ Erro",
+                Text = "Não foi possível salvar a posição!",
+                Duration = 2
+            })
+        end
+    end)
+    
+    -- Função para teleportar (ida e volta)
+    teleportRoundTripButton.MouseButton1Click:Connect(function()
+        if not savedPosition then
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "⚠️ Erro",
+                Text = "Nenhuma posição salva encontrada! Clique em 'Salvar Posição' primeiro.",
+                Duration = 3
+            })
+            return
+        end
+        
+        if isTeleporting then
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "⏳ Aguarde",
+                Text = "Já está teleportando!",
+                Duration = 2
+            })
+            return
+        end
+        
+        local currentCharacter = player.Character
+        if not currentCharacter or not currentCharacter:FindFirstChild("HumanoidRootPart") then
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "❌ Erro",
+                Text = "Personagem não encontrado!",
+                Duration = 2
+            })
+            return
+        end
+        
+        isTeleporting = true
+        
+        -- Salvar posição original
+        originalPosition = currentCharacter.HumanoidRootPart.Position
+        
+        -- Feedback visual no botão
+        local originalColor = teleportRoundTripButton.BackgroundColor3
+        teleportRoundTripButton.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+        teleportRoundTripButton.Text = "🌀 TELEPORTANDO..."
+        
+        -- Notificação de início
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "🌀 Ida e Volta",
+            Text = "Indo para a posição salva...",
+            Duration = 1
+        })
+        
+        -- Teleportar para posição salva
+        currentCharacter.HumanoidRootPart.CFrame = CFrame.new(savedPosition)
+        
+        -- Aguardar 1 segundo
+        wait(1)
+        
+        -- Verificar se o personagem ainda existe
+        currentCharacter = player.Character
+        if currentCharacter and currentCharacter:FindFirstChild("HumanoidRootPart") and originalPosition then
+            -- Teleportar de volta
+            currentCharacter.HumanoidRootPart.CFrame = CFrame.new(originalPosition)
+            
+            -- Feedback visual
+            teleportRoundTripButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "✨ Voltei!",
+                Text = "Você voltou para a posição original!",
+                Duration = 2
+            })
+        else
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "⚠️ Aviso",
+                Text = "Não foi possível voltar!",
+                Duration = 2
+            })
+        end
+        
+        -- Resetar botão
+        wait(0.3)
+        teleportRoundTripButton.BackgroundColor3 = originalColor
+        teleportRoundTripButton.Text = "🌀 IDA E VOLTA"
+        
+        isTeleporting = false
+    end)
+    
+    -- Função para teleportar (permanente)
+    teleportPermanentButton.MouseButton1Click:Connect(function()
+        if not savedPosition then
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "⚠️ Erro",
+                Text = "Nenhuma posição salva encontrada! Clique em 'Salvar Posição' primeiro.",
+                Duration = 3
+            })
+            return
+        end
+        
+        local currentCharacter = player.Character
+        if not currentCharacter or not currentCharacter:FindFirstChild("HumanoidRootPart") then
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "❌ Erro",
+                Text = "Personagem não encontrado!",
+                Duration = 2
+            })
+            return
+        end
+        
+        -- Feedback visual no botão
+        local originalColor = teleportPermanentButton.BackgroundColor3
+        teleportPermanentButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        teleportPermanentButton.Text = "✨ TELEPORTADO!"
+        
+        -- Teleportar para posição salva
+        currentCharacter.HumanoidRootPart.CFrame = CFrame.new(savedPosition)
+        
+        -- Notificação
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "✨ Teleportado!",
+            Text = "Você foi teleportado para a posição salva permanentemente!",
+            Duration = 2
+        })
+        
+        -- Resetar botão
+        wait(0.3)
+        teleportPermanentButton.BackgroundColor3 = originalColor
+        teleportPermanentButton.Text = "✨ TELEPORTAR (PERMANENTE)"
+    end)
+    
+    -- Função para aplicar noclip
+    local function applyNoclip(char)
+        if noclipEnabled and char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+    
+    -- Função para remover noclip
+    local function removeNoclip(char)
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
+    
+    -- Função para toggle noclip
+    local function toggleNoclip()
+        noclipEnabled = not noclipEnabled
+        
+        if noclipEnabled then
+            -- Ativar noclip
+            if noclipConnection then
+                noclipConnection:Disconnect()
+            end
+            
+            noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+                local currentCharacter = player.Character
+                if currentCharacter then
+                    applyNoclip(currentCharacter)
+                end
+            end)
+            
+            -- Aplicar imediatamente
+            if player.Character then
+                applyNoclip(player.Character)
+            end
+            
+            updateNoclipButton()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "🔓 Noclip Ativado",
+                Text = "Você pode atravessar paredes!",
+                Duration = 2
+            })
+        else
+            -- Desativar noclip
+            if noclipConnection then
+                noclipConnection:Disconnect()
+                noclipConnection = nil
+            end
+            
+            if player.Character then
+                removeNoclip(player.Character)
+            end
+            
+            updateNoclipButton()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "🔒 Noclip Desativado",
+                Text = "Colisões reativadas!",
+                Duration = 2
+            })
+        end
+    end
+    
+    noclipButton.MouseButton1Click:Connect(toggleNoclip)
+    
+    -- Atualizar quando o personagem renascer
+    player.CharacterAdded:Connect(function(newCharacter)
+        character = newCharacter
+        wait(0.5) -- Aguardar carregamento
+        
+        -- Resetar estados de teleporte
+        isTeleporting = false
+        originalPosition = nil
+        
+        -- Reaplicar noclip se estiver ativo
+        if noclipEnabled then
+            applyNoclip(newCharacter)
+        end
+    end)
+    
+    return mainFrame
+end
+
+-- Criar a GUI
+createGUI()
+
+print("GUI Utility carregada com sucesso!") -- Verificar no output se o script rodou
